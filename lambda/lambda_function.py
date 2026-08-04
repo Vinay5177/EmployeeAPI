@@ -1,5 +1,5 @@
 import json
-from logger import log_info, log_error
+
 from employee_service import (
     create_new_employee,
     list_employees,
@@ -10,17 +10,27 @@ from employee_service import (
 
 from utils import response
 
+from logger import (
+    log_info,
+    log_error
+)
+
+from config import APP_ENV
+
 
 def lambda_handler(event, context):
+
     request_id = (
         event
         .get("requestContext", {})
         .get("requestId")
     )
 
+
     log_info(
         "Request started",
         {
+            "environment": APP_ENV,
             "requestId": request_id,
             "event": event
         }
@@ -28,8 +38,6 @@ def lambda_handler(event, context):
 
 
     try:
-
-        # HTTP API Gateway v2 method
 
         method = (
             event
@@ -42,7 +50,12 @@ def lambda_handler(event, context):
         path_parameters = event.get(
             "pathParameters"
         )
-        query_params = event.get("queryStringParameters") or {}
+
+
+        query_params = event.get(
+            "queryStringParameters"
+        ) or {}
+
 
         body = {}
 
@@ -52,9 +65,11 @@ def lambda_handler(event, context):
                 event["body"]
             )
 
+
         log_info(
             "Request details",
             {
+                "environment": APP_ENV,
                 "requestId": request_id,
                 "method": method,
                 "pathParameters": path_parameters,
@@ -63,11 +78,6 @@ def lambda_handler(event, context):
         )
 
 
-
-        # =========================
-        # POST /employees
-        # =========================
-
         if method == "POST":
 
             result, status = create_new_employee(
@@ -75,12 +85,7 @@ def lambda_handler(event, context):
             )
 
 
-        # =========================
-        # GET
-        # =========================
-
         elif method == "GET":
-
 
             if (
                 path_parameters
@@ -93,13 +98,10 @@ def lambda_handler(event, context):
 
             else:
 
-                result, status = list_employees(query_params)
+                result, status = list_employees(
+                    query_params
+                )
 
-
-
-        # =========================
-        # PUT
-        # =========================
 
         elif method == "PUT":
 
@@ -108,11 +110,6 @@ def lambda_handler(event, context):
                 body
             )
 
-
-
-        # =========================
-        # DELETE
-        # =========================
 
         elif method == "DELETE":
 
@@ -130,52 +127,34 @@ def lambda_handler(event, context):
 
             status = 400
 
+
         log_info(
-
             "Request completed",
-
             {
-
+                "environment": APP_ENV,
                 "requestId": request_id,
-
                 "statusCode": status
-
             }
-
         )
 
-        final_response = response(
 
+        return response(
             status,
-
             result
-
         )
-
-        return final_response
-
 
 
     except Exception as e:
 
         log_error(
-
             "Unhandled exception",
-
             e
-
         )
 
         return response(
-
             500,
-
             {
-
                 "success": False,
-
                 "message": "Internal server error"
-
             }
-
         )
