@@ -4,14 +4,17 @@ from lambda_function import lambda_handler
 event = {
     "requestContext": {
         "http": {
-            "method": "DELETE"
+            "method": "GET"
         }
     },
-    "pathParameters": {
-        "employeeId": "ba6d313a-43f6-47c1-8e56-b7bf030e72f8"
-    }
+    "queryStringParameters": {
+    "department": "Engineering",
+    "name": "John"
 }
+}
+
 response = lambda_handler(event, None)
 
-print("Lambda Response:")
 print(json.dumps(response, indent=4))
+print("\nParsed Body:")
+print(json.dumps(json.loads(response["body"]), indent=4))

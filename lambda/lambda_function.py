@@ -32,7 +32,7 @@ def lambda_handler(event, context):
         path_parameters = event.get(
             "pathParameters"
         )
-
+        query_params = event.get("queryStringParameters") or {}
 
         body = {}
 
@@ -77,7 +77,7 @@ def lambda_handler(event, context):
 
             else:
 
-                result, status = list_employees()
+                result, status = list_employees(query_params)
 
 
 

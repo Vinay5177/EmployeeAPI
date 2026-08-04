@@ -42,15 +42,32 @@ def create_new_employee(data):
 
 
 
-def list_employees():
+def list_employees(filters=None):
 
     employees = get_all_employees()
 
+    if filters:
+
+        department = filters.get("department")
+        name = filters.get("name")
+
+        if department:
+            employees = [
+                emp for emp in employees
+                if emp.get("department", "").lower() == department.lower()
+            ]
+
+        if name:
+            employees = [
+                emp for emp in employees
+                if name.lower() in emp.get("name", "").lower()
+            ]
+
     return {
         "success": True,
+        "count": len(employees),
         "data": employees
     }, 200
-
 
 
 def find_employee(employee_id):
