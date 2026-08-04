@@ -1,5 +1,5 @@
 import json
-
+from logger import log_info, log_error
 from employee_service import (
     create_new_employee,
     list_employees,
@@ -12,9 +12,19 @@ from utils import response
 
 
 def lambda_handler(event, context):
+    request_id = (
+        event
+        .get("requestContext", {})
+        .get("requestId")
+    )
 
-    print("Incoming event:")
-    print(json.dumps(event))
+    log_info(
+        "Request started",
+        {
+            "requestId": request_id,
+            "event": event
+        }
+    )
 
 
     try:
@@ -42,9 +52,15 @@ def lambda_handler(event, context):
                 event["body"]
             )
 
-
-        print("Method:", method)
-        print("Path Parameters:", path_parameters)
+        log_info(
+            "Request details",
+            {
+                "requestId": request_id,
+                "method": method,
+                "pathParameters": path_parameters,
+                "queryParameters": query_params
+            }
+        )
 
 
 
@@ -114,25 +130,52 @@ def lambda_handler(event, context):
 
             status = 400
 
+        log_info(
 
+            "Request completed",
 
-        return response(
-            status,
-            result
+            {
+
+                "requestId": request_id,
+
+                "statusCode": status
+
+            }
+
         )
+
+        final_response = response(
+
+            status,
+
+            result
+
+        )
+
+        return final_response
 
 
 
     except Exception as e:
 
-        print("ERROR:")
-        print(str(e))
+        log_error(
 
+            "Unhandled exception",
+
+            e
+
+        )
 
         return response(
+
             500,
+
             {
+
                 "success": False,
-                "message": str(e)
+
+                "message": "Internal server error"
+
             }
+
         )
