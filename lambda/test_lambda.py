@@ -4,17 +4,23 @@ from lambda_function import lambda_handler
 event = {
 
     "requestContext": {
+
         "http": {
+
             "method": "GET"
+
         }
+
     },
 
     "queryStringParameters": {
 
-        "page": "2",
-        "limit": "2"
+        "sortBy": "name",
+
+        "order": "desc"
 
     }
+
 }
 
 response = lambda_handler(event, None)

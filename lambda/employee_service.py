@@ -45,63 +45,118 @@ def create_new_employee(data):
 
 def list_employees(filters=None):
 
+    filters = filters or {}
+
     employees = get_all_employees()
 
 
-    if filters:
+    # -------------------------
+    # Filtering
+    # -------------------------
 
-        department = filters.get("department")
-        name = filters.get("name")
-
-
-        if department:
-
-            employees = [
-                emp for emp in employees
-                if emp.get("department", "").lower()
-                == department.lower()
-            ]
+    department = filters.get("department")
+    name = filters.get("name")
 
 
-        if name:
+    if department:
 
-            employees = [
-                emp for emp in employees
-                if name.lower()
-                in emp.get("name", "").lower()
-            ]
+        employees = [
+            emp for emp in employees
+            if emp.get("department", "").lower()
+            == department.lower()
+        ]
 
 
+    if name:
 
+        employees = [
+            emp for emp in employees
+            if name.lower()
+            in emp.get("name", "").lower()
+        ]
+
+
+    # -------------------------
+    # Sorting
+    # -------------------------
+
+    sort_by = filters.get("sortBy")
+    order = filters.get("order", "asc")
+
+
+    allowed_sort_fields = [
+        "name",
+        "department",
+        "salary"
+    ]
+
+
+    if sort_by:
+
+        if sort_by not in allowed_sort_fields:
+
+            return {
+                "success": False,
+                "message":
+                f"Invalid sort field. Allowed values: {allowed_sort_fields}"
+            }, 400
+
+
+        reverse_order = (
+            order.lower() == "desc"
+        )
+
+
+        employees.sort(
+            key=lambda x: x.get(sort_by, ""),
+            reverse=reverse_order
+        )
+
+
+    # -------------------------
     # Pagination
+    # -------------------------
 
-    page = int(
-        filters.get("page", 1)
-        if filters
-        else 1
-    )
+    try:
 
+        page = int(
+            filters.get("page", 1)
+        )
 
-    limit = int(
-        filters.get("limit", 10)
-        if filters
-        else 10
-    )
+        limit = int(
+            filters.get("limit", 10)
+        )
 
 
-    # Safety limit
+    except ValueError:
+
+        return {
+            "success": False,
+            "message":
+            "page and limit must be numbers"
+        }, 400
+
+
 
     if limit > 50:
+
         limit = 50
+
+
+    if page < 1:
+
+        page = 1
+
 
 
     total = len(employees)
 
 
-    total_pages = math.ceil(
-        total / limit
-    ) if total > 0 else 1
-
+    total_pages = (
+        math.ceil(total / limit)
+        if total > 0
+        else 1
+    )
 
 
     start = (
@@ -112,10 +167,7 @@ def list_employees(filters=None):
     end = start + limit
 
 
-    paginated_employees = employees[
-        start:end
-    ]
-
+    employees = employees[start:end]
 
 
     return {
@@ -130,7 +182,7 @@ def list_employees(filters=None):
 
         "totalPages": total_pages,
 
-        "data": paginated_employees
+        "data": employees
 
     }, 200
 
