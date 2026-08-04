@@ -1,4 +1,5 @@
 import uuid
+import math
 
 from dynamodb_helper import (
     create_employee,
@@ -46,29 +47,92 @@ def list_employees(filters=None):
 
     employees = get_all_employees()
 
+
     if filters:
 
         department = filters.get("department")
         name = filters.get("name")
 
+
         if department:
+
             employees = [
                 emp for emp in employees
-                if emp.get("department", "").lower() == department.lower()
+                if emp.get("department", "").lower()
+                == department.lower()
             ]
+
 
         if name:
+
             employees = [
                 emp for emp in employees
-                if name.lower() in emp.get("name", "").lower()
+                if name.lower()
+                in emp.get("name", "").lower()
             ]
 
-    return {
-        "success": True,
-        "count": len(employees),
-        "data": employees
-    }, 200
 
+
+    # Pagination
+
+    page = int(
+        filters.get("page", 1)
+        if filters
+        else 1
+    )
+
+
+    limit = int(
+        filters.get("limit", 10)
+        if filters
+        else 10
+    )
+
+
+    # Safety limit
+
+    if limit > 50:
+        limit = 50
+
+
+    total = len(employees)
+
+
+    total_pages = math.ceil(
+        total / limit
+    ) if total > 0 else 1
+
+
+
+    start = (
+        page - 1
+    ) * limit
+
+
+    end = start + limit
+
+
+    paginated_employees = employees[
+        start:end
+    ]
+
+
+
+    return {
+
+        "success": True,
+
+        "page": page,
+
+        "limit": limit,
+
+        "total": total,
+
+        "totalPages": total_pages,
+
+        "data": paginated_employees
+
+    }, 200
 
 def find_employee(employee_id):
 

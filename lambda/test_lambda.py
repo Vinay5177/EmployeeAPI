@@ -2,15 +2,19 @@ import json
 from lambda_function import lambda_handler
 
 event = {
+
     "requestContext": {
         "http": {
             "method": "GET"
         }
     },
+
     "queryStringParameters": {
-    "department": "Engineering",
-    "name": "John"
-}
+
+        "page": "2",
+        "limit": "2"
+
+    }
 }
 
 response = lambda_handler(event, None)
