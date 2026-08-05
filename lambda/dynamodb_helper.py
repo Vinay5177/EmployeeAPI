@@ -47,10 +47,34 @@ def get_employee(employee_id):
     )
 
 
-def update_employee(employee):
+def update_employee(employee_id, data):
+    return table.update_item(
 
-    return table.put_item(
-        Item=employee
+        Key={
+            "employeeId": employee_id
+        },
+
+        UpdateExpression="""
+                SET #name = :name,
+                    department = :department,
+                    email = :email,
+                    salary = :salary
+            """,
+
+        ExpressionAttributeNames={
+            "#name": "name"
+        },
+
+        ExpressionAttributeValues={
+
+            ":name": data["name"],
+            ":department": data["department"],
+            ":email": data["email"],
+            ":salary": data["salary"]
+
+        },
+
+        ReturnValues="ALL_NEW"
     )
 
 

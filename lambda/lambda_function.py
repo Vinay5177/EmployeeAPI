@@ -1,3 +1,4 @@
+from authorization import is_admin
 import json
 
 from employee_service import (
@@ -77,12 +78,22 @@ def lambda_handler(event, context):
             }
         )
 
-
         if method == "POST":
 
-            result, status = create_new_employee(
-                body
-            )
+            if not is_admin(event):
+
+                result = {
+                    "success": False,
+                    "message": "Admin access required"
+                }
+
+                status = 403
+
+            else:
+
+                result, status = create_new_employee(
+                    body
+                )
 
 
         elif method == "GET":
@@ -103,19 +114,56 @@ def lambda_handler(event, context):
                 )
 
 
+
         elif method == "PUT":
 
-            result, status = modify_employee(
-                path_parameters["employeeId"],
-                body
-            )
+            if not is_admin(event):
+
+                result = {
+
+                    "success": False,
+
+                    "message": "Admin access required"
+
+                }
+
+                status = 403
+
+
+            else:
+
+                result, status = modify_employee(
+
+                    path_parameters["employeeId"],
+
+                    body
+
+                )
+
 
 
         elif method == "DELETE":
 
-            result, status = remove_employee(
-                path_parameters["employeeId"]
-            )
+            if not is_admin(event):
+
+                result = {
+
+                    "success": False,
+
+                    "message": "Admin access required"
+
+                }
+
+                status = 403
+
+
+            else:
+
+                result, status = remove_employee(
+
+                    path_parameters["employeeId"]
+
+                )
 
 
         else:

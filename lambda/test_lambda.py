@@ -3,13 +3,6 @@ import json
 from lambda_function import lambda_handler
 
 
-
-# =====================================
-# GET employees test
-# Pagination + Sorting
-# =====================================
-
-
 event = {
 
     "requestContext": {
@@ -17,30 +10,32 @@ event = {
         "requestId": "local-test-001",
 
         "http": {
+            "method": "DELETE",
+            "path": "/employees/{employeeId}"
+        },
 
-            "method": "GET",
+        "authorizer": {
 
-            "path": "/employees"
+            "jwt": {
+
+                "claims": {
+
+                    "email": "admin@example.com",
+                    "custom:role": "user"
+
+                }
+
+            }
 
         }
 
     },
 
-
-    "queryStringParameters": {
-
-        "page": "1",
-
-        "limit": "5",
-
-        "sortBy": "salary",
-
-        "order": "desc"
-
+    "pathParameters": {
+        "employeeId": "6255313d-56df-42c5-bfd4-f6736efc5109"
     },
 
-
-    "pathParameters": None
+    "body": None
 
 }
 
