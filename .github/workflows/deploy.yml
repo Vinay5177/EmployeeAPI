@@ -48,7 +48,19 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: us-east-1
 
+    - name: Check AWS secrets
+      run: |
+        if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+          echo "AWS_ACCESS_KEY_ID missing"
+        else
+          echo "AWS_ACCESS_KEY_ID available"
+        fi
 
+        if [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ]; then
+          echo "AWS_SECRET_ACCESS_KEY missing"
+        else
+          echo "AWS_SECRET_ACCESS_KEY available"
+        fi
     - name: Deploy Lambda
       run: |
         aws lambda update-function-code \
