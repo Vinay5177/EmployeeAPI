@@ -1,5 +1,6 @@
-from authorization import is_admin
 import json
+
+from authorization import is_admin
 
 from employee_service import (
     create_new_employee,
@@ -9,200 +10,264 @@ from employee_service import (
     remove_employee
 )
 
-from utils import response
+from exceptions import (
+    EmployeeAPIError,
+    AuthorizationError,
+    ValidationError
+)
+
+from utils import build_response
 
 from logger import (
     log_info,
-    log_error
+    log_error,
+    start_timer,
+    elapsed_ms
 )
 
-from config import APP_ENV
+from config import Config
 
 
 def lambda_handler(event, context):
+    timer = start_timer()
 
-    request_id = (
-        event
-        .get("requestContext", {})
-        .get("requestId")
+    request_context = event.get(
+        "requestContext",
+        {}
     )
 
+    request_id = request_context.get(
+        "requestId",
+        "local-test"
+    )
+
+    claims = (
+        request_context
+        .get("authorizer", {})
+        .get("jwt", {})
+        .get("claims", {})
+    )
+
+    user_email = claims.get(
+        "email",
+        "anonymous"
+    )
+
+    role = claims.get(
+        "custom:role",
+        "unknown"
+    )
+
+    method = (
+        request_context
+        .get("http", {})
+        .get("method")
+    )
+
+    path = (
+        request_context
+        .get("http", {})
+        .get("path")
+    )
 
     log_info(
         "Request started",
         {
-            "environment": APP_ENV,
+            "environment": Config.ENVIRONMENT,
             "requestId": request_id,
-            "event": event
+            "user": user_email,
+            "role": role,
+            "method": method,
+            "path": path
         }
     )
 
-
     try:
-
-        method = (
-            event
-            .get("requestContext", {})
-            .get("http", {})
-            .get("method")
-        )
-
-
         path_parameters = event.get(
             "pathParameters"
-        )
-
+        ) or {}
 
         query_params = event.get(
             "queryStringParameters"
         ) or {}
 
-
         body = {}
 
-        if event.get("body"):
+        raw_body = event.get("body")
 
-            body = json.loads(
-                event["body"]
-            )
+        if raw_body:
+            try:
+                body = json.loads(
+                    raw_body
+                )
+            except json.JSONDecodeError:
+                raise ValidationError(
+                    "Request body must contain valid JSON"
+                )
 
+            if not isinstance(body, dict):
+                raise ValidationError(
+                    "Request body must be a JSON object"
+                )
 
         log_info(
             "Request details",
             {
-                "environment": APP_ENV,
                 "requestId": request_id,
-                "method": method,
                 "pathParameters": path_parameters,
                 "queryParameters": query_params
             }
         )
 
+        status = 200
+
+        # -------------------------
+        # POST
+        # -------------------------
+
         if method == "POST":
 
             if not is_admin(event):
-
-                result = {
-                    "success": False,
-                    "message": "Admin access required"
-                }
-
-                status = 403
-
-            else:
-
-                result, status = create_new_employee(
-                    body
+                raise AuthorizationError(
+                    "Admin access required"
                 )
 
+            result = create_new_employee(
+                body
+            )
+
+            status = 201
+
+        # -------------------------
+        # GET
+        # -------------------------
 
         elif method == "GET":
 
-            if (
-                path_parameters
-                and path_parameters.get("employeeId")
-            ):
+            employee_id = path_parameters.get(
+                "employeeId"
+            )
 
-                result, status = find_employee(
-                    path_parameters["employeeId"]
+            if employee_id:
+                result = find_employee(
+                    employee_id
                 )
-
             else:
-
-                result, status = list_employees(
+                result = list_employees(
                     query_params
                 )
 
-
+        # -------------------------
+        # PUT
+        # -------------------------
 
         elif method == "PUT":
 
             if not is_admin(event):
-
-                result = {
-
-                    "success": False,
-
-                    "message": "Admin access required"
-
-                }
-
-                status = 403
-
-
-            else:
-
-                result, status = modify_employee(
-
-                    path_parameters["employeeId"],
-
-                    body
-
+                raise AuthorizationError(
+                    "Admin access required"
                 )
 
+            employee_id = path_parameters.get(
+                "employeeId"
+            )
 
+            if not employee_id:
+                raise ValidationError(
+                    "employeeId is required"
+                )
+
+            result = modify_employee(
+                employee_id,
+                body
+            )
+
+        # -------------------------
+        # DELETE
+        # -------------------------
 
         elif method == "DELETE":
 
             if not is_admin(event):
-
-                result = {
-
-                    "success": False,
-
-                    "message": "Admin access required"
-
-                }
-
-                status = 403
-
-
-            else:
-
-                result, status = remove_employee(
-
-                    path_parameters["employeeId"]
-
+                raise AuthorizationError(
+                    "Admin access required"
                 )
 
+            employee_id = path_parameters.get(
+                "employeeId"
+            )
+
+            if not employee_id:
+                raise ValidationError(
+                    "employeeId is required"
+                )
+
+            result = remove_employee(
+                employee_id
+            )
 
         else:
-
-            result = {
-                "success": False,
-                "message": "Unsupported method"
-            }
-
-            status = 400
-
+            raise ValidationError(
+                "Unsupported method"
+            )
 
         log_info(
             "Request completed",
             {
-                "environment": APP_ENV,
+                "environment": Config.ENVIRONMENT,
                 "requestId": request_id,
-                "statusCode": status
+                "statusCode": status,
+                "durationMs": elapsed_ms(timer)
             }
         )
 
-
-        return response(
+        return build_response(
             status,
-            result
+            {
+                "success": True,
+                "data": result,
+                "requestId": request_id
+            }
         )
 
+    except EmployeeAPIError as ex:
 
-    except Exception as e:
+        log_error(
+            "API exception",
+            error=ex,
+            data={
+                "requestId": request_id,
+                "statusCode": ex.status_code,
+                "errorCode": ex.error_code
+            }
+        )
+
+        return build_response(
+            ex.status_code,
+            {
+                "success": False,
+                "errorCode": ex.error_code,
+                "message": ex.message,
+                "requestId": request_id
+            }
+        )
+
+    except Exception as ex:
 
         log_error(
             "Unhandled exception",
-            e
+            error=ex,
+            data={
+                "requestId": request_id
+            }
         )
 
-        return response(
+        return build_response(
             500,
             {
                 "success": False,
-                "message": "Internal server error"
+                "errorCode": "INTERNAL_ERROR",
+                "message": "Internal server error",
+                "requestId": request_id
             }
         )

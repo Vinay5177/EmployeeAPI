@@ -2,17 +2,31 @@ import json
 from decimal import Decimal
 
 
-def decimal_converter(obj):
+def decimal_serializer(obj):
+    """
+    Convert DynamoDB Decimal values into JSON-compatible numbers.
+    """
 
     if isinstance(obj, Decimal):
-        return int(obj)
+
+        if obj % 1 == 0:
+            return int(obj)
+
+        return float(obj)
 
     raise TypeError(
-        "Object not JSON serializable"
+        f"Object of type {type(obj).__name__} "
+        "is not JSON serializable"
     )
 
 
-def response(status_code, body):
+def success_response(
+    status_code,
+    body
+):
+    """
+    Build a successful API Gateway response.
+    """
 
     return {
         "statusCode": status_code,
@@ -21,6 +35,51 @@ def response(status_code, body):
         },
         "body": json.dumps(
             body,
-            default=decimal_converter
+            default=decimal_serializer
         )
     }
+
+
+def error_response(
+    status_code,
+    message,
+    error_code,
+    request_id=None
+):
+    """
+    Build an error API Gateway response.
+    """
+
+    payload = {
+        "success": False,
+        "message": message,
+        "errorCode": error_code
+    }
+
+    if request_id:
+        payload["requestId"] = request_id
+
+    return {
+        "statusCode": status_code,
+        "headers": {
+            "Content-Type": "application/json"
+        },
+        "body": json.dumps(
+            payload,
+            default=decimal_serializer
+        )
+    }
+
+
+def build_response(
+    status_code,
+    body
+):
+    """
+    Backward-compatible response builder.
+    """
+
+    return success_response(
+        status_code,
+        body
+    )

@@ -1,22 +1,24 @@
 import os
 
 
-# DynamoDB configuration
-TABLE_NAME = os.getenv(
-    "TABLE_NAME",
-    "Employees"
-)
+class Config:
 
+    ENVIRONMENT = os.getenv(
+        "ENVIRONMENT",
+        "local"
+    )
 
-# Environment name
-APP_ENV = os.getenv(
-    "APP_ENV",
-    "local"
-)
+    AWS_REGION = os.getenv(
+        "AWS_REGION",
+        "us-east-1"
+    )
 
+    EMPLOYEE_TABLE = os.getenv(
+        "EMPLOYEE_TABLE",
+        "Employees"
+    )
 
-# AWS Region
-AWS_REGION = os.getenv(
-    "AWS_REGION",
-    "us-east-1"
-)
+    LOG_LEVEL = os.getenv(
+        "LOG_LEVEL",
+        "INFO"
+    )

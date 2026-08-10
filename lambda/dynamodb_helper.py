@@ -1,87 +1,203 @@
 import boto3
+from botocore.exceptions import ClientError
 
-from config import (
-    TABLE_NAME,
-    AWS_REGION
+from config import Config
+from logger import (
+    log_info,
+    log_error
 )
 
 
 dynamodb = boto3.resource(
     "dynamodb",
-    region_name=AWS_REGION
+    region_name=Config.AWS_REGION
 )
 
-
 table = dynamodb.Table(
-    TABLE_NAME
+    Config.EMPLOYEE_TABLE
 )
 
 
 def create_employee(employee):
+    """
+    Create a new employee in DynamoDB.
+    """
 
-    return table.put_item(
-        Item=employee
-    )
+    try:
+        response = table.put_item(
+            Item=employee
+        )
+
+        log_info(
+            "Employee created in DynamoDB",
+            {
+                "employeeId": employee["employeeId"]
+            }
+        )
+
+        return response
+
+    except ClientError as ex:
+        log_error(
+            "Failed to create employee",
+            error=ex,
+            data={
+                "employeeId": employee.get("employeeId")
+            }
+        )
+
+        raise
 
 
 def get_all_employees():
+    """
+    Retrieve all employees from DynamoDB.
+    """
 
-    response = table.scan()
+    try:
+        response = table.scan()
 
-    return response.get(
-        "Items",
-        []
-    )
+        items = response.get(
+            "Items",
+            []
+        )
+
+        log_info(
+            "Employees retrieved",
+            {
+                "count": len(items)
+            }
+        )
+
+        return items
+
+    except ClientError as ex:
+        log_error(
+            "Failed to retrieve employees",
+            error=ex
+        )
+
+        raise
 
 
 def get_employee(employee_id):
+    """
+    Retrieve a single employee by ID.
+    """
 
-    response = table.get_item(
-        Key={
-            "employeeId": employee_id
-        }
-    )
+    try:
+        response = table.get_item(
+            Key={
+                "employeeId": employee_id
+            }
+        )
 
-    return response.get(
-        "Item"
-    )
+        employee = response.get("Item")
+
+        log_info(
+            "Employee retrieved",
+            {
+                "employeeId": employee_id,
+                "found": employee is not None
+            }
+        )
+
+        return employee
+
+    except ClientError as ex:
+        log_error(
+            "Failed to retrieve employee",
+            error=ex,
+            data={
+                "employeeId": employee_id
+            }
+        )
+
+        raise
 
 
 def update_employee(employee_id, data):
-    return table.update_item(
+    """
+    Update an existing employee in DynamoDB.
+    """
 
-        Key={
-            "employeeId": employee_id
-        },
-
-        UpdateExpression="""
+    try:
+        response = table.update_item(
+            Key={
+                "employeeId": employee_id
+            },
+            UpdateExpression="""
                 SET #name = :name,
                     department = :department,
                     email = :email,
                     salary = :salary
             """,
+            ExpressionAttributeNames={
+                "#name": "name"
+            },
+            ExpressionAttributeValues={
+                ":name": data["name"],
+                ":department": data["department"],
+                ":email": data["email"],
+                ":salary": data["salary"]
+            },
+            ReturnValues="ALL_NEW"
+        )
 
-        ExpressionAttributeNames={
-            "#name": "name"
-        },
+        log_info(
+            "Employee updated in DynamoDB",
+            {
+                "employeeId": employee_id
+            }
+        )
 
-        ExpressionAttributeValues={
+        return response.get(
+            "Attributes",
+            {}
+        )
 
-            ":name": data["name"],
-            ":department": data["department"],
-            ":email": data["email"],
-            ":salary": data["salary"]
+    except ClientError as ex:
+        log_error(
+            "Failed to update employee",
+            error=ex,
+            data={
+                "employeeId": employee_id
+            }
+        )
 
-        },
-
-        ReturnValues="ALL_NEW"
-    )
+        raise
 
 
 def delete_employee(employee_id):
+    """
+    Delete an employee from DynamoDB.
+    """
 
-    return table.delete_item(
-        Key={
-            "employeeId": employee_id
-        }
-    )
+    try:
+        response = table.delete_item(
+            Key={
+                "employeeId": employee_id
+            },
+            ReturnValues="ALL_OLD"
+        )
+
+        log_info(
+            "Employee deleted from DynamoDB",
+            {
+                "employeeId": employee_id,
+                "deleted": "Attributes" in response
+            }
+        )
+
+        return response
+
+    except ClientError as ex:
+        log_error(
+            "Failed to delete employee",
+            error=ex,
+            data={
+                "employeeId": employee_id
+            }
+        )
+
+        raise

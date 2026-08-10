@@ -21,7 +21,7 @@ event = {
                 "claims": {
 
                     "email": "admin@example.com",
-                    "custom:role": "user"
+                    "custom:role": "admin"
 
                 }
 
