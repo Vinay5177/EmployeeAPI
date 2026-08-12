@@ -1,307 +1,282 @@
 # Employee Management System API
 
-A serverless Employee Management REST API built using AWS Lambda, API Gateway, and DynamoDB.
-
-The project demonstrates a production-style serverless architecture with clean separation of responsibilities.
-
----
+A serverless Employee Management System REST API built with AWS Lambda, Amazon API Gateway, Amazon Cognito, and Amazon DynamoDB.
 
 ## Architecture
 
-```
-Client (Postman / Frontend)
-          |
-          |
-          v
-Amazon API Gateway
-          |
-          |
-          v
+```text
+Client / Postman
+       |
+       v
+API Gateway HTTP API
+       |
+       |-- Cognito JWT Authorizer
+       |
+       v
 AWS Lambda
-          |
-          |
-          +----------------+
-          |                |
-          v                v
- Employee Service     Validation
-          |
-          |
-          v
- DynamoDB Helper
-          |
-          |
-          v
- Amazon DynamoDB
-```
+       |
+       +---- Authorization / RBAC
+       |
+       +---- Validation
+       |
+       +---- Employee Service
+       |
+       v
+Amazon DynamoDB
+AWS Services
+AWS Lambda
+Amazon API Gateway HTTP API
+Amazon Cognito User Pool
+Amazon DynamoDB
+Amazon CloudWatch
+AWS SAM
+Authentication
 
----
+The API uses Amazon Cognito JWT authentication.
 
-## Technologies Used
+JWT configuration:
 
-- Python 3.14
-- AWS Lambda
-- Amazon API Gateway (HTTP API)
-- Amazon DynamoDB
-- Amazon CloudWatch
-- Postman
-- Git
+User Pool: EmployeeAPIUserPool
+Region: us-east-1
+Authorization header:
+Authorization: Bearer <ID_TOKEN>
 
----
+The API validates:
 
-# Project Structure
+JWT issuer
+JWT audience
+Token signature
+Token expiration
+Authorization / RBAC
 
-```
-employee-management-system/
+Two application roles are supported:
 
-├── README.md
+User
 
-└── lambda/
+Users can:
 
-    ├── lambda_function.py
-    ├── employee_service.py
-    ├── dynamodb_helper.py
-    ├── validation.py
-    ├── utils.py
-    └── test_lambda.py
-```
+List employees
+Retrieve an employee
 
----
+Users cannot:
 
-# Features
+Create employees
+Update employees
+Delete employees
+Admin
 
-## Employee CRUD Operations
+Admins can:
 
-### Create Employee
+List employees
+Retrieve employees
+Create employees
+Update employees
+Delete employees
 
-```
-POST /employees
-```
+The role is read from the Cognito claim:
 
-Request:
+custom:role
+API Endpoints
 
-```json
-{
-    "name": "John Doe",
-    "department": "Engineering",
-    "email": "john@example.com",
-    "salary": 70000
-}
-```
+Base URL:
 
----
-
-### Get All Employees
-
-```
+https://58ghwofkzf.execute-api.us-east-1.amazonaws.com
+List employees
 GET /employees
-```
 
----
+Optional query parameters:
 
-### Get Employee By ID
-
-```
+?page=1
+&limit=10
+&department=Engineering
+&name=John
+&sortBy=salary
+&order=desc
+Get employee
 GET /employees/{employeeId}
-```
+Create employee
+POST /employees
 
----
+Example:
 
-### Update Employee
+{
+  "name": "Jane Doe",
+  "department": "Engineering",
+  "email": "jane@example.com",
+  "salary": 80000
+}
 
-```
+Admin access required.
+
+Update employee
 PUT /employees/{employeeId}
-```
 
-Request:
+Partial updates are supported.
 
-```json
+Example:
+
 {
-    "name": "John Updated",
-    "department": "Finance",
-    "email": "john.updated@example.com",
-    "salary": 80000
+  "salary": 90000
 }
-```
 
----
+Admin access required.
 
-### Delete Employee
-
-```
+Delete employee
 DELETE /employees/{employeeId}
-```
 
----
+Admin access required.
 
-# Search and Filtering
+Validation
 
-## Filter by Department
+Employee creation requires:
 
-```
+name
+department
+email
+salary
+
+Validation includes:
+
+Required fields
+String validation
+Empty value checks
+Email format validation
+Positive salary validation
+Unknown field protection
+Partial update validation
+Pagination
+
+Example:
+
+GET /employees?page=2&limit=5
+
+Response contains:
+
+{
+  "page": 2,
+  "limit": 5,
+  "total": 11,
+  "totalPages": 3,
+  "data": []
+}
+
+Maximum page size is 50.
+
+Filtering
+
+Department:
+
 GET /employees?department=Engineering
-```
 
----
+Name:
 
-## Search by Name
-
-```
 GET /employees?name=John
-```
+Sorting
 
----
+Supported fields:
 
-## Combine Filters
+name
+department
+salary
 
-```
-GET /employees?department=Engineering&name=John
-```
+Example:
 
----
+GET /employees?sortBy=salary&order=desc
+Error Handling
 
-# Pagination
+The API returns structured errors.
 
-Employees can be paginated using:
+Example:
 
-```
-GET /employees?page=1&limit=10
-```
-
-Example response:
-
-```json
 {
-    "success": true,
-    "page": 1,
-    "limit": 10,
-    "total": 25,
-    "totalPages": 3,
-    "data": []
+  "success": false,
+  "errorCode": "FORBIDDEN",
+  "message": "Admin access required",
+  "requestId": "..."
 }
-```
 
----
+Common error codes:
 
-# API Response Format
+VALIDATION_ERROR
+NOT_FOUND
+FORBIDDEN
+DATABASE_ERROR
+INTERNAL_ERROR
 
-Successful response:
+Unauthenticated requests are rejected by API Gateway/Cognito.
 
-```json
-{
-    "success": true,
-    "message": "Employee created successfully",
-    "data": {}
-}
-```
+Testing
 
-Error response:
+Run the test suite:
 
-```json
-{
-    "success": false,
-    "message": "Employee not found"
-}
-```
+python -m pytest .\lambda\test_lambda.py -v
 
----
+The project includes tests for:
 
-# Local Testing
+GET employees
+GET employee
+Create employee
+Non-admin DELETE authorization
+Admin DELETE
+Unsupported HTTP methods
+SAM Validation
 
-Navigate to lambda folder:
+Validate the SAM template:
 
-```
-cd lambda
-```
+sam validate --template-file template.yaml --lint
+Build
 
-Run:
+Build the application:
 
-```
-python test_lambda.py
-```
+sam build
+Deployment
 
----
+Deployment configuration is stored in:
 
-# AWS Deployment
+samconfig.toml
 
-Deployment steps:
+Deploy:
 
-1. Package Lambda files:
+sam deploy --config-file samconfig.toml --config-env production
+CloudWatch Logs
 
-```
-lambda_function.py
-employee_service.py
-dynamodb_helper.py
-validation.py
-utils.py
-```
+Lambda logs can be viewed with:
 
-2. Create ZIP package.
+aws logs tail /aws/lambda/employee-management-api `
+  --region us-east-1 `
+  --since 10m
+Project Structure
+employee-management-system/
+│
+├── lambda/
+│   ├── authorization.py
+│   ├── config.py
+│   ├── dynamodb_helper.py
+│   ├── employee_service.py
+│   ├── exceptions.py
+│   ├── lambda_function.py
+│   ├── logger.py
+│   ├── utils.py
+│   ├── validation.py
+│   └── test_lambda.py
+│
+├── template.yaml
+├── samconfig.toml
+└── README.md
+Security
 
-3. Upload ZIP to AWS Lambda.
+The application implements:
 
-4. Verify handler:
+JWT authentication
+Cognito-based identity
+Role-based access control
+Admin-only write operations
+Request validation
+Structured error handling
+CloudWatch logging
+DynamoDB IAM permissions through SAM
+Status
 
-```
-lambda_function.lambda_handler
-```
+Production deployment verified successfully.
 
-5. Test using API Gateway.
-
----
-
-# AWS Services
-
-## Lambda
-
-Handles API request processing and business logic execution.
-
-## API Gateway
-
-Provides REST endpoints for clients.
-
-## DynamoDB
-
-Stores employee records.
-
-## CloudWatch
-
-Provides logging and monitoring.
-
----
-
-# Current API Version
-
-Version:
-
-```
-v1.0
-```
-
-Implemented:
-
-- CRUD operations
-- Search
-- Filtering
-- Pagination
-- Serverless deployment
-
----
-
-# Future Enhancements
-
-Planned features:
-
-- Sorting
-- Authentication and authorization
-- JWT security
-- Unit testing
-- AWS SAM deployment
-- CI/CD pipeline
-- React frontend
-- DynamoDB optimization using Query and Indexes
-
----
-
-# Author
-
-Employee Management System Demo Project
+Core CRUD, authentication, authorization, validation, pagination, filtering, sorting, error handling, automated tests, and CloudWatch monitoring have been tested successfully.

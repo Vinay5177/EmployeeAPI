@@ -1,0 +1,13 @@
+version = 0.1
+
+[production.deploy.parameters]
+stack_name = "employee-management-system"
+resolve_s3 = true
+s3_prefix = "employee-management-system"
+region = "us-east-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
+
+[production.global.parameters]
+region = "us-east-1"
